@@ -1,13 +1,28 @@
 # MOJO
 
-Aplikasi produktivitas ringan bergaya Dynamic Island untuk Windows 11, dibuat dengan Tauri 2, Rust, React, dan TypeScript.
+Aplikasi produktivitas ringan bergaya Dynamic Island untuk Windows 11, dibuat dengan Tauri 2, Rust, React, dan TypeScript. Kode orisinal.
 
-**Status: Milestone M0, M1, dan M2.**
-- M0: jendela island (pil hitam di tengah atas layar).
-- M1: klik pil untuk membuka/menutup dengan animasi halus.
-- M2: halaman Pengaturan dan sistem modul yang bisa dinyalakan/dimatikan (modul contoh: Jam dan Timer fokus).
+**Status: milestone M0 sampai M6.**
 
-Jendela ini: tanpa bingkai, transparan, selalu di atas jendela lain, dan tidak muncul di taskbar.
+| Milestone | Isi |
+|---|---|
+| M0 | Jendela island: tanpa bingkai, transparan, selalu di atas, tidak di taskbar, menempel di tengah atas layar |
+| M1 | Hover untuk membuka/menutup dengan animasi halus |
+| M2 | Pengaturan dan sistem modul (saklar on/off, tersimpan), tray dengan menu Keluar |
+| M3 | To-do dan Pomodoro (timer dihitung di Rust) |
+| M4 | Overlay volume dan Caps Lock |
+| M5 | Musik dari Windows media session (sampul, judul, artis, kontrol) dan lirik |
+| M6 | Pop-up baterai/charger, Wi-Fi, dan pergantian perangkat audio (headphone) |
+
+Belum dikerjakan: pengingat minum dan file shelf (M7), deteksi full-screen dan multi-monitor (M8), installer (M9), overlay brightness.
+
+## Cara keluar dari MOJO
+
+MOJO tidak punya bingkai dan tidak ada di taskbar, jadi ada tiga cara menutupnya:
+
+1. **Ikon tray** (pojok kanan bawah, dekat jam; mungkin di balik panah `^`): klik kanan, pilih **Keluar dari MOJO**.
+2. **Pengaturan**: arahkan mouse ke island, klik ikon ⚙, lalu tombol merah **Keluar dari MOJO** di bagian bawah daftar.
+3. Saat memakai `npm run tauri dev`: tekan `Ctrl+C` di terminal.
 
 ## Yang dibutuhkan
 
@@ -31,59 +46,93 @@ npm install
 npm run tauri dev
 ```
 
-Saat pertama kali, kompilasi Rust memakan waktu beberapa menit. Itu normal. Jalankan berikutnya jauh lebih cepat.
+Kompilasi pertama memakan beberapa menit (ada banyak paket Rust). Itu normal; berikutnya jauh lebih cepat. Kalau muncul error merah di terminal, salin seluruhnya dan kirim ke thread proyek.
 
 ## Cara memverifikasi
 
-Setelah `npm run tauri dev` selesai, cek satu per satu:
+Setelah `npm run tauri dev` selesai, cek satu per satu dan catat nomor yang gagal.
 
-1. Pil hitam kecil (260x44) muncul di tengah atas layar utama, sedikit di bawah tepi atas.
-2. Sudut pil membulat dan di sekelilingnya tembus pandang (tidak ada kotak putih atau abu-abu).
-3. Tidak ada tombol di taskbar untuk MOJO.
-4. Buka aplikasi lain, misalnya Notepad, lalu geser ke bawah pil: pil tetap terlihat di atasnya.
+### M0 dan M1: jendela dan animasi
 
-### Verifikasi M1 (animasi)
+1. Pil hitam kecil muncul menempel di tengah atas layar utama (sudut bawahnya membulat), berisi jam (misalnya `15:08`).
+2. Di sekeliling pil tidak ada kotak putih/abu-abu dan tidak ada tombol di taskbar.
+3. Buka aplikasi lain (Notepad), geser ke area atas: pil tetap terlihat di atasnya.
+4. Arahkan mouse ke pil: ia melebar dan memanjang ke bawah dengan halus, tampil seperti desain (tab di kiri atas, tanggal dan jam di tengah, ⚙ di kanan).
+5. Jauhkan mouse: setelah sekitar setengah detik ia mengecil kembali (`Esc` juga menutup).
+6. Biarkan tertutup, lihat Task Manager: CPU MOJO harus 0% saat diam.
 
-6. Klik pil: ia melebar dan memanjang ke bawah dengan halus, lalu muncul jam. Posisinya tetap di tengah atas.
-7. Klik tombol `✕` (atau tekan `Esc`): pil mengecil kembali dengan halus, dan jendela ikut mengecil (area di sekitar pil bisa diklik tembus lagi ke jendela di belakangnya).
-8. Biarkan pil tertutup, buka Task Manager: CPU MOJO harus 0% saat diam (tidak ada animasi atau timer yang berjalan).
+### M2: pengaturan
 
-### Verifikasi M2 (pengaturan dan modul)
+7. Buka island, klik ⚙: muncul daftar modul dengan saklar. Matikan "Tanggal & jam": jam hilang dari tampilan.
+8. Keluar dari MOJO (lihat atas), jalankan lagi: saklar tetap seperti terakhir. File ada di `%APPDATA%\com.mojo.app\settings.json`.
 
-9. Buka pil, klik `⚙`. Muncul daftar modul dengan saklar: Jam (aktif) dan Timer fokus (mati).
-10. Nyalakan Timer fokus, klik `←`. Timer 25:00 muncul di bawah jam. Klik `Mulai`, hitungan mundur berjalan.
-11. Matikan Jam di Pengaturan: jam hilang dari tampilan.
-12. Tutup MOJO (`Ctrl+C` di terminal), jalankan lagi dengan `npm run tauri dev`: pilihan saklarmu masih sama. Pengaturan tersimpan di `%APPDATA%\com.mojo.app\settings.json`.
+### M3: Pomodoro dan To-do
 
-Untuk menutup: tekan `Ctrl+C` di terminal tempat `npm run tauri dev` berjalan.
+9. Tab **Pomodoro**: tekan ▶, hitungan 25:00 berjalan. Tutup island (jauhkan mouse), tunggu 1 menit, buka lagi: waktu tetap akurat. (Untuk uji cepat, tekan **Lewati** lalu mulai Istirahat 5 menit.)
+10. Saat waktu habis island menampilkan pesan singkat di bagian atas lalu pindah ke fase berikutnya.
+11. Tab **To-do**: ketik tugas, `Enter`, centang, hapus. Keluar lalu jalankan lagi: daftar tetap ada.
+12. Matikan modul Pomodoro di Pengaturan: timer direset dan berhenti.
 
-Kalau ada yang tidak sesuai, catat nomor langkahnya dan kirim ke thread proyek bersama pesan error di terminal.
+### M4: overlay sistem
+
+13. Ubah volume (tombol keyboard atau ikon speaker): island menampilkan `Volume xx%` dengan bilah selama sekitar 2 detik, lalu kembali ke jam. Mute menampilkan "Suara dimatikan".
+14. Caps Lock bawaannya **mati** (karena memasang hook keyboard, yang kadang dicurigai antivirus). Nyalakan di Pengaturan, tekan Caps Lock: muncul "Caps Lock aktif/mati". Hook hanya memeriksa tombol Caps Lock; tombol lain tidak dibaca, disimpan, atau dikirim ke mana pun.
+
+### M5: musik dan lirik
+
+15. Putar lagu di Spotify atau YouTube Music (browser). Tab **Music** menampilkan sampul, judul, artis, waktu, dan bilah hijau. Saat tertutup, sampul kecil muncul di kiri dan ikon visualizer di kanan jam.
+16. Tombol ⏮ ⏯ ⏭ mengendalikan pemutar. Jeda lewat aplikasi lain: island ikut berubah.
+17. Klik ikon kutip (") untuk tampilan lirik (sampul kecil di kiri, lirik bergulir di kanan). Lirik diambil dari layanan terbuka [LRCLIB](https://lrclib.net): **judul, artis, album, dan durasi lagu dikirim ke lrclib.net**. Matikan modul "Lirik" di Pengaturan kalau tidak mau. Tidak semua lagu punya lirik bersinkron; jika tidak ada, tampil "Lirik tidak ditemukan".
+18. Ikon speaker di kartu musik hanya hiasan (sesuai desain), belum bisa diklik.
+
+### M6: status perangkat
+
+19. Laptop: cabut dan colok charger, pop-up "Charger terhubung/dicabut" muncul sekali. Saat baterai turun ke 20% muncul "Baterai rendah". PC tanpa baterai: tidak ada pop-up (normal).
+20. Putuskan lalu sambungkan Wi-Fi: muncul "Tidak ada internet" dan "Terhubung: nama-wifi".
+21. Colok headphone yang membuat output default berganti: muncul "Output: nama perangkat". Beberapa laptop tidak mengganti output default saat jack dicolok, jadi pop-up bisa tidak muncul.
+
+Catatan: pop-up tampil di tempat jam (island tertutup) atau di tengah bilah atas (island terbuka).
+
+## Yang belum terverifikasi (jujur)
+
+Kode dibuat di lingkungan Linux, tanpa bisa menjalankan Windows. Yang sudah dicek: `npm run build`, `cargo check` di Linux, dan `cargo check --target x86_64-pc-windows-msvc` (kode Windows lolos kompilasi). Tampilan diperiksa lewat screenshot browser dengan Tauri di-mock. **Belum pernah dijalankan di Windows 11**, jadi semua langkah di atas masih perlu dicoba, terutama:
+
+- Resize dan posisi jendela saat hover, serta kehalusan animasi di WebView2.
+- Hook Caps Lock, callback volume, SMTC (sampul/kontrol), baterai, Wi-Fi, dan pergantian perangkat audio.
+- Apakah lirik dari LRCLIB bisa diambil dari WebView (bergantung pada izin CORS layanan itu).
+- Angka RAM dan CPU (lihat di bawah).
 
 ## Mengukur RAM dan CPU (penting)
 
-Target MOJO adalah ringan, tapi angkanya harus diukur, bukan ditebak. Aplikasi Tauri memakai WebView2 yang berjalan sebagai beberapa proses `msedgewebview2.exe`.
+Target MOJO adalah ringan, tapi angkanya harus diukur. Aplikasi Tauri memakai WebView2 yang berjalan sebagai beberapa proses `msedgewebview2.exe`.
 
-1. Buat versi rilis: `npm run tauri build` (hasilnya di `src-tauri\target\release\`). Versi `dev` lebih boros, jangan dipakai untuk mengukur.
-2. Jalankan `mojo.exe` dari folder itu, biarkan diam 1 menit.
-3. Buka **Task Manager** (`Ctrl+Shift+Esc`), tab **Details**. Jumlahkan kolom Memory untuk `mojo.exe` dan semua `msedgewebview2.exe` yang menjadi turunannya.
-4. Catat angka RAM dan CPU saat diam. Angka ini jadi patokan untuk milestone berikutnya.
+1. Buat versi rilis: `npm run tauri build` (hasilnya di `src-tauri\target\release\`). Versi `dev` lebih boros.
+2. Jalankan `mojo.exe`, biarkan island tertutup 1 menit.
+3. Task Manager (`Ctrl+Shift+Esc`), tab **Details**: jumlahkan Memory `mojo.exe` dan semua `msedgewebview2.exe` anaknya. Catat juga CPU.
+4. Ulangi dengan island terbuka dan musik berjalan.
+
+Perilaku idle yang disengaja: tidak ada animasi berulang; jam hanya berdetak sekali per menit; detik musik/Pomodoro hanya berdetak saat island terbuka; semua data Windows memakai event (callback), bukan polling; modul yang dimatikan melepas listener-nya.
 
 ## Struktur
 
 ```
-src/App.tsx          pil island, animasi, halaman Pengaturan
-src/modules/         satu file per modul + daftar di index.ts
-src/settings.ts      baca/simpan pengaturan (lewat Rust)
-src-tauri/src/lib.rs logika Rust: posisi/ukuran jendela, simpan settings.json
-src-tauri/tauri.conf.json  pengaturan jendela (transparan, tanpa bingkai, dll.)
+src/App.tsx               island: ciut/terbuka, hover, tab, Pengaturan
+src/modules/              satu modul per fitur; daftar di index.ts
+src/modules/music/        musik, lirik (LRCLIB), state dari event Rust
+src/overlay.ts            pesan singkat dari Rust (volume, baterai, dll.)
+src-tauri/src/lib.rs      jendela, tray, perintah untuk UI
+src-tauri/src/store.rs    settings.json dan data (to-do)
+src-tauri/src/timer.rs    Pomodoro
+src-tauri/src/services.rs menyalakan/mematikan layanan sesuai Pengaturan
+src-tauri/src/win/        API Windows: caps, audio, media (SMTC), devices
 ```
 
-Rust sengaja minimal: `tauri`, `serde`, dan `serde_json`, tanpa plugin tambahan.
+Dependensi Rust: `tauri` (dengan tray), `serde`, `serde_json`, dan di Windows saja `windows`. Dependensi JS: React dan font Poppins (@fontsource, dibundel lokal).
 
 ## Menambah modul baru
 
-1. Buat komponen di `src/modules/NamaModul.tsx` (terima prop `active`; jalankan timer hanya saat `active` true).
-2. Daftarkan di `src/modules/index.ts`. Saklar di Pengaturan muncul otomatis.
+1. Buat komponen di `src/modules/` (tab menerima prop `active`; jalankan timer hanya saat `active` true).
+2. Daftarkan di `src/modules/index.ts` dan tambahkan id-nya di `MODULE_DEFAULTS` (`src-tauri/src/store.rs`). Saklar di Pengaturan muncul otomatis.
 
 ## Perintah lain
 
