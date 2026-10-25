@@ -1,3 +1,10 @@
+:root {
+  --anim: 320ms;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  color: #f5f5f7;
+}
+
 html,
 body,
 #root {
@@ -9,9 +16,213 @@ body,
   user-select: none;
 }
 
+/* Pil: ukuran hanya berubah saat transisi; saat diam tidak ada animasi berjalan. */
 .island {
-  width: 100%;
-  height: 100%;
+  position: relative;
+  width: 260px;
+  height: 44px;
   background: #000;
   border-radius: 22px;
+  overflow: hidden;
+  transition:
+    width var(--anim) var(--ease),
+    height var(--anim) var(--ease),
+    border-radius var(--anim) var(--ease);
+}
+
+.island.open {
+  width: 420px;
+  height: 200px;
+  border-radius: 28px;
+}
+
+.hit {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.content {
+  box-sizing: border-box;
+  width: 420px;
+  height: 200px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 160ms ease,
+    visibility 0s linear 160ms;
+}
+
+.island.open .content {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 200ms ease 120ms;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #a1a1a6;
+}
+
+.bar-actions {
+  display: flex;
+  gap: 6px;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+.icon {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: #1c1c1e;
+  cursor: pointer;
+}
+
+.icon:hover,
+.btn:hover {
+  background: #2c2c2e;
+}
+
+.home {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.home[hidden] {
+  display: none;
+}
+
+.clock {
+  font-size: 40px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.focus-time {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  margin-right: 6px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 14px;
+  padding: 5px 12px;
+  background: #1c1c1e;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn.ghost {
+  background: transparent;
+  color: #a1a1a6;
+}
+
+.muted {
+  margin: 0;
+  font-size: 12px;
+  color: #a1a1a6;
+}
+
+.settings {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #1c1c1e;
+  cursor: pointer;
+}
+
+.row strong,
+.row small {
+  display: block;
+}
+
+.row strong {
+  font-size: 13px;
+}
+
+.row small {
+  font-size: 11px;
+  color: #a1a1a6;
+}
+
+/* Saklar */
+input[role="switch"] {
+  appearance: none;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  border-radius: 11px;
+  background: #3a3a3c;
+  position: relative;
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+input[role="switch"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 160ms ease;
+}
+
+input[role="switch"]:checked {
+  background: #30d158;
+}
+
+input[role="switch"]:checked::after {
+  transform: translateX(16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --anim: 1ms;
+  }
 }
