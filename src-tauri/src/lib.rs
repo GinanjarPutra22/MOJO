@@ -105,6 +105,12 @@ fn music_control(action: String) {
     let _ = action;
 }
 
+/// Teruskan galat JavaScript ke terminal (membantu diagnosis saat jendela tidak terlihat).
+#[tauri::command]
+fn log_js(message: String) {
+    eprintln!("[MOJO JS] {message}");
+}
+
 /// Keluar dari MOJO (tombol di Pengaturan; menu tray juga memanggil app.exit).
 #[tauri::command]
 fn quit_app(app: AppHandle) {
@@ -129,6 +135,7 @@ pub fn run() {
             get_settings,
             save_settings,
             quit_app,
+            log_js,
             music_control,
             read_data,
             write_data,
@@ -167,6 +174,20 @@ pub fn run() {
             let width = window.outer_size()?.width as f64 / window.scale_factor()?;
             place_top_center(&window, width)?;
             window.show()?;
+
+            // Diagnosis (hanya build dev): cetak posisi jendela dan buka DevTools terpisah.
+            #[cfg(debug_assertions)]
+            {
+                eprintln!(
+                    "[MOJO] jendela: pos={:?} ukuran={:?} terlihat={:?} skala={:?}",
+                    window.outer_position(),
+                    window.outer_size(),
+                    window.is_visible(),
+                    window.scale_factor()
+                );
+                eprintln!("[MOJO] monitor utama: {:?}", window.primary_monitor().map(|m| m.map(|m| (*m.position(), *m.size()))));
+                window.open_devtools();
+            }
 
             services::apply(app.handle(), &store::load_settings(app.handle()));
             Ok(())
