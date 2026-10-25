@@ -8,6 +8,17 @@
   </head>
 
   <body>
+    <script>
+      // Diagnosis: lapor ke terminal bahkan bila modul JavaScript gagal dimuat.
+      (function () {
+        var send = function (m) {
+          try { window.__TAURI_INTERNALS__.invoke("log_js", { message: m }); } catch (e) {}
+        };
+        send("HTML dimuat dari " + location.href);
+        window.addEventListener("error", function (e) { send("GALAT " + e.message + " @ " + e.filename + ":" + e.lineno); });
+        window.addEventListener("unhandledrejection", function (e) { send("DITOLAK " + e.reason); });
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
