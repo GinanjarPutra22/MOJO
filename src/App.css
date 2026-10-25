@@ -1,7 +1,10 @@
 :root {
   --anim: 320ms;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
-  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --dim: #8e8e93;
+  --card: #1c1c1e;
+  --green: #30d158;
+  font-family: "Poppins", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
   color: #f5f5f7;
 }
 
@@ -16,13 +19,19 @@ body,
   user-select: none;
 }
 
-/* Pil: ukuran hanya berubah saat transisi; saat diam tidak ada animasi berjalan. */
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Island menempel di tepi atas layar seperti notch; hanya sudut bawah yang membulat.
+   Ukuran hanya berubah saat transisi; saat diam tidak ada animasi berjalan. */
 .island {
   position: relative;
-  width: 260px;
-  height: 44px;
+  width: 340px;
+  height: 40px;
   background: #000;
-  border-radius: 22px;
+  border-radius: 0 0 20px 20px;
   overflow: hidden;
   transition:
     width var(--anim) var(--ease),
@@ -31,33 +40,66 @@ body,
 }
 
 .island.open {
-  width: 420px;
-  height: 200px;
-  border-radius: 28px;
+  width: 600px;
+  height: 172px;
+  border-radius: 0 0 28px 28px;
 }
 
-.hit {
+/* ---------- ciut ---------- */
+.mini {
   position: absolute;
-  inset: 0;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
+  inset: 0 0 auto 0;
+  height: 40px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: 500;
+  opacity: 1;
+  transition: opacity 140ms ease 120ms;
 }
 
-.content {
-  box-sizing: border-box;
-  width: 420px;
-  height: 200px;
-  padding: 14px 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.island.open .mini {
   opacity: 0;
   visibility: hidden;
   transition:
-    opacity 160ms ease,
-    visibility 0s linear 160ms;
+    opacity 100ms ease,
+    visibility 0s linear 100ms;
+}
+
+.mini-side {
+  display: flex;
+  align-items: center;
+}
+
+.mini-side.right {
+  justify-content: flex-end;
+}
+
+.mini-center {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- terbuka ---------- */
+.content {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: 600px;
+  height: 172px;
+  padding: 10px 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 140ms ease,
+    visibility 0s linear 140ms;
 }
 
 .island.open .content {
@@ -67,99 +109,96 @@ body,
 }
 
 .bar {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
-}
-
-.title {
+  height: 28px;
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #a1a1a6;
 }
 
-.bar-actions {
+.bar-center {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bar .icon {
+  justify-self: end;
+}
+
+.tabs {
   display: flex;
-  gap: 6px;
+  gap: 14px;
+  min-width: 0;
 }
 
-button {
-  font: inherit;
-  color: inherit;
+.tab {
+  border: 0;
+  padding: 0;
+  background: none;
+  font-size: 12px;
+  color: var(--dim);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab.on {
+  color: #fff;
 }
 
 .icon {
   width: 26px;
   height: 26px;
+  display: grid;
+  place-items: center;
   border: 0;
   border-radius: 50%;
-  background: #1c1c1e;
+  background: none;
   cursor: pointer;
 }
 
-.icon:hover,
-.btn:hover {
-  background: #2c2c2e;
+.icon:hover {
+  background: var(--card);
 }
 
-.home {
+.body {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+  min-height: 0;
 }
 
-.home[hidden] {
+.body[hidden],
+.tab-pane[hidden] {
   display: none;
 }
 
-.clock {
-  font-size: 40px;
-  font-weight: 300;
-  font-variant-numeric: tabular-nums;
-}
-
-.focus {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.focus-time {
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-  margin-right: 6px;
-}
-
-.btn {
-  border: 0;
-  border-radius: 14px;
-  padding: 5px 12px;
-  background: #1c1c1e;
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.btn.ghost {
-  background: transparent;
-  color: #a1a1a6;
+.tab-pane {
+  height: 100%;
 }
 
 .muted {
   margin: 0;
+  padding-top: 40px;
+  text-align: center;
   font-size: 12px;
-  color: #a1a1a6;
+  color: var(--dim);
 }
 
+/* ---------- pengaturan ---------- */
 .settings {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   overflow-y: auto;
+  padding-right: 4px;
+}
+
+.settings::-webkit-scrollbar {
+  width: 4px;
+}
+
+.settings::-webkit-scrollbar-thumb {
+  background: #3a3a3c;
+  border-radius: 2px;
 }
 
 .row {
@@ -167,10 +206,11 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   border-radius: 12px;
-  background: #1c1c1e;
+  background: var(--card);
   cursor: pointer;
+  flex: none;
 }
 
 .row strong,
@@ -179,22 +219,22 @@ button {
 }
 
 .row strong {
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .row small {
-  font-size: 11px;
-  color: #a1a1a6;
+  font-size: 10px;
+  color: var(--dim);
 }
 
-/* Saklar */
 input[role="switch"] {
   appearance: none;
   flex: none;
-  width: 38px;
-  height: 22px;
+  width: 36px;
+  height: 20px;
   margin: 0;
-  border-radius: 11px;
+  border-radius: 10px;
   background: #3a3a3c;
   position: relative;
   cursor: pointer;
@@ -206,15 +246,15 @@ input[role="switch"]::after {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: #fff;
   transition: transform 160ms ease;
 }
 
 input[role="switch"]:checked {
-  background: #30d158;
+  background: var(--green);
 }
 
 input[role="switch"]:checked::after {

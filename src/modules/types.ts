@@ -1,14 +1,17 @@
 import type { ComponentType } from "react";
 
-export interface ModuleProps {
-  /** true saat island sedang terbuka. Modul tidak boleh menjalankan timer saat false kecuali memang perlu. */
+export interface TabProps {
+  /** true saat island terbuka dan tab ini sedang dipilih. Jangan jalankan timer saat false. */
   active: boolean;
 }
 
 export interface MojoModule {
+  /** Harus sama dengan id di MODULE_DEFAULTS (src-tauri/src/store.rs). */
   id: string;
   name: string;
   description: string;
-  defaultEnabled: boolean;
-  Component: ComponentType<ModuleProps>;
+  /** Kalau ada, modul tampil sebagai tab di island yang terbuka. */
+  tab?: { label: string; Component: ComponentType<TabProps> };
+  /** Isi tambahan di island yang ciut: kiri dan kanan jam. */
+  mini?: { Left?: ComponentType; Right?: ComponentType };
 }

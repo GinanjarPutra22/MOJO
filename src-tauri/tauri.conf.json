@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "MOJO",
-        "width": 260,
-        "height": 44,
+        "width": 340,
+        "height": 40,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
