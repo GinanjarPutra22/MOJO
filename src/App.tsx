@@ -2,9 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 import { formatDate, formatTime, useMinuteClock } from "./clock";
 import { Back, Gear } from "./icons";
+import OverlayView from "./OverlayView";
 import { ANIM_MS, COLLAPSED, EXPANDED, resizeIsland } from "./island";
 import { MODULES } from "./modules";
 import { listenOverlay, overlayStore } from "./overlay";
+import { invoke } from "@tauri-apps/api/core";
 import { loadSettings, saveSettings, type Settings } from "./settings";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -103,7 +105,7 @@ export default function App() {
         <div className="mini-side left">
           {enabled.map((m) => m.mini?.Left && <m.mini.Left key={m.id} />)}
         </div>
-        <div className="mini-center">{overlay ? overlay.text : clockOn ? formatTime(now) : "MOJO"}</div>
+        <div className="mini-center">{overlay ? <OverlayView overlay={overlay} /> : clockOn ? formatTime(now) : "MOJO"}</div>
         <div className="mini-side right">
           {enabled.map((m) => m.mini?.Right && <m.mini.Right key={m.id} />)}
         </div>
@@ -126,7 +128,7 @@ export default function App() {
               ))}
             {view === "settings" && <span className="tab on">Pengaturan</span>}
           </nav>
-          <div className="bar-center">{overlay ? overlay.text : centerText}</div>
+          <div className="bar-center">{overlay ? <OverlayView overlay={overlay} /> : centerText}</div>
           <button
             type="button"
             className="icon"
@@ -166,6 +168,9 @@ export default function App() {
                 />
               </label>
             ))}
+            <button type="button" className="quit" onClick={() => invoke("quit_app")}>
+              Keluar dari MOJO
+            </button>
           </main>
         )}
       </div>

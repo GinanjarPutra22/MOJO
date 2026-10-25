@@ -30,3 +30,20 @@ lto = true
 opt-level = 3
 panic = "abort"
 strip = true
+
+# API Windows, hanya dikompilasi di Windows. Fitur ditambah seperlunya.
+[target.'cfg(windows)'.dependencies.windows]
+version = "0.62"
+features = [
+  "Win32_Foundation",
+  "Win32_Media_Audio",
+  "Win32_Media_Audio_Endpoints",
+  "Win32_System_Com",
+  "Win32_System_Threading",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_WindowsAndMessaging",
+]
+
+# Dibutuhkan oleh makro #[implement] milik crate windows.
+[target.'cfg(windows)'.dependencies]
+windows-core = "0.62"

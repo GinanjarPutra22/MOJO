@@ -21,4 +21,14 @@ export const MODULES: MojoModule[] = [
     description: "Daftar tugas sederhana yang tersimpan.",
     tab: { label: "To-do", Component: Todo },
   },
+  {
+    id: "volume",
+    name: "Overlay volume",
+    description: "Tampilkan volume sebentar saat berubah.",
+  },
+  {
+    id: "capslock",
+    name: "Overlay Caps Lock",
+    description: "Tampilkan status Caps Lock. Memasang hook keyboard (hanya cek tombol Caps Lock).",
+  },
 ];

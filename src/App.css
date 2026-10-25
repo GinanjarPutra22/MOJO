@@ -410,3 +410,40 @@ input[role="switch"]:checked::after {
   border-color: var(--green);
   color: #000;
 }
+
+/* ---------- overlay & keluar ---------- */
+.ov {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ov-bar {
+  width: 70px;
+  height: 4px;
+  border-radius: 2px;
+  background: #3a3a3c;
+  overflow: hidden;
+}
+
+.ov-bar span {
+  display: block;
+  height: 100%;
+  background: #fff;
+}
+
+.quit {
+  flex: none;
+  margin-top: 2px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #3a1a1a;
+  color: #ff6b6b;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quit:hover {
+  background: #4d2020;
+}

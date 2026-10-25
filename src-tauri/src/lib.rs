@@ -2,6 +2,8 @@ mod overlay;
 mod services;
 mod store;
 mod timer;
+#[cfg(windows)]
+mod win;
 
 use std::sync::Arc;
 
@@ -84,6 +86,12 @@ fn pomodoro_skip(p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
     p.skip()
 }
 
+/// Keluar dari MOJO (tombol di Pengaturan; menu tray juga memanggil app.exit).
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
+
 #[tauri::command]
 fn read_data(app: AppHandle, key: String) -> Result<Option<String>, String> {
     store::read_data(&app, &key)
@@ -101,6 +109,7 @@ pub fn run() {
             resize_island,
             get_settings,
             save_settings,
+            quit_app,
             read_data,
             write_data,
             pomodoro_get,
@@ -111,6 +120,7 @@ pub fn run() {
         ])
         .setup(|app| {
             app.manage(Pomodoro::new());
+            app.manage(services::Services::default());
             let window = app
                 .get_webview_window("main")
                 .expect("jendela 'main' tidak ditemukan");
