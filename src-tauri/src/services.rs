@@ -28,7 +28,10 @@ impl Drop for Service {
 #[derive(Default)]
 pub struct Running {
     caps: Option<Service>,
-    volume: Option<Service>,
+    /// Layanan audio beserta konfigurasinya (volume, perangkat) agar bisa dimulai ulang bila berubah.
+    audio: Option<((bool, bool), Service)>,
+    battery: Option<Service>,
+    network: Option<Service>,
     music: Option<Service>,
 }
 
@@ -57,7 +60,16 @@ pub fn apply(app: &AppHandle, settings: &Settings) {
         use crate::win;
         toggle(&mut run.caps, settings.enabled("capslock"), || win::caps::start(app.clone()));
         toggle(&mut run.music, settings.enabled("music"), || win::media::start(app.clone()));
-        toggle(&mut run.volume, settings.enabled("volume"), || win::audio::start(app.clone()));
+        toggle(&mut run.battery, settings.enabled("battery"), || win::devices::start_battery(app.clone()));
+        toggle(&mut run.network, settings.enabled("wifi"), || win::devices::start_network(app.clone()));
+
+        let cfg = (settings.enabled("volume"), settings.enabled("headphone"));
+        if run.audio.as_ref().map(|(c, _)| *c) != Some(cfg) {
+            run.audio = None; // hentikan yang lama sebelum memulai konfigurasi baru
+            if cfg.0 || cfg.1 {
+                run.audio = win::audio::start(app.clone(), cfg.0, cfg.1).map(|s| (cfg, s));
+            }
+        }
     }
     #[cfg(not(windows))]
     {

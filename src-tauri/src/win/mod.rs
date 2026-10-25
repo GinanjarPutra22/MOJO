@@ -2,4 +2,5 @@
 
 pub mod audio;
 pub mod caps;
+pub mod devices;
 pub mod media;

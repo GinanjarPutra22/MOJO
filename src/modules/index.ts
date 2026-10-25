@@ -45,4 +45,19 @@ export const MODULES: MojoModule[] = [
     name: "Overlay Caps Lock",
     description: "Tampilkan status Caps Lock. Memasang hook keyboard (hanya cek tombol Caps Lock).",
   },
+  {
+    id: "battery",
+    name: "Baterai & charger",
+    description: "Pop-up saat charger dicolok/dicabut dan saat baterai rendah (20%).",
+  },
+  {
+    id: "wifi",
+    name: "Wi-Fi",
+    description: "Pop-up saat jaringan terhubung atau internet terputus.",
+  },
+  {
+    id: "headphone",
+    name: "Perangkat audio",
+    description: "Pop-up saat output suara berganti (mis. headphone dicolok).",
+  },
 ];
