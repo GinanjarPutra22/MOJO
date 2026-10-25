@@ -1,6 +1,12 @@
+mod overlay;
+mod services;
 mod store;
+mod timer;
+
+use std::sync::Arc;
 
 use store::Settings;
+use timer::{Pomodoro, PomodoroState};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -48,7 +54,34 @@ fn save_settings(app: AppHandle, settings: Settings) -> Result<(), String> {
             m
         },
     };
-    store::store_settings(&app, &merged)
+    store::store_settings(&app, &merged)?;
+    services::apply(&app, &merged);
+    Ok(())
+}
+
+#[tauri::command]
+fn pomodoro_get(p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
+    p.get()
+}
+
+#[tauri::command]
+fn pomodoro_start(app: AppHandle, p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
+    p.start(&app)
+}
+
+#[tauri::command]
+fn pomodoro_pause(p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
+    p.pause()
+}
+
+#[tauri::command]
+fn pomodoro_reset(p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
+    p.reset()
+}
+
+#[tauri::command]
+fn pomodoro_skip(p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
+    p.skip()
 }
 
 #[tauri::command]
@@ -69,9 +102,15 @@ pub fn run() {
             get_settings,
             save_settings,
             read_data,
-            write_data
+            write_data,
+            pomodoro_get,
+            pomodoro_start,
+            pomodoro_pause,
+            pomodoro_reset,
+            pomodoro_skip
         ])
         .setup(|app| {
+            app.manage(Pomodoro::new());
             let window = app
                 .get_webview_window("main")
                 .expect("jendela 'main' tidak ditemukan");
@@ -97,6 +136,8 @@ pub fn run() {
             let width = window.outer_size()?.width as f64 / window.scale_factor()?;
             place_top_center(&window, width)?;
             window.show()?;
+
+            services::apply(app.handle(), &store::load_settings(app.handle()));
             Ok(())
         })
         .run(tauri::generate_context!())

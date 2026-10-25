@@ -1,3 +1,5 @@
+import Pomodoro from "./Pomodoro";
+import Todo from "./Todo";
 import type { MojoModule } from "./types";
 
 /**
@@ -7,4 +9,16 @@ import type { MojoModule } from "./types";
  */
 export const MODULES: MojoModule[] = [
   { id: "clock", name: "Tanggal & jam", description: "Tanggal dan jam di bagian atas island." },
+  {
+    id: "pomodoro",
+    name: "Pomodoro",
+    description: "Fokus 25 menit, istirahat 5 menit. Timer berjalan di Rust.",
+    tab: { label: "Pomodoro", Component: Pomodoro },
+  },
+  {
+    id: "todo",
+    name: "To-do",
+    description: "Daftar tugas sederhana yang tersimpan.",
+    tab: { label: "To-do", Component: Todo },
+  },
 ];
