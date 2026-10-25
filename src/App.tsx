@@ -7,7 +7,8 @@ import { ANIM_MS, COLLAPSED, EXPANDED, resizeIsland } from "./island";
 import { MODULES } from "./modules";
 import { listenOverlay, overlayStore } from "./overlay";
 import { invoke } from "@tauri-apps/api/core";
-import { loadSettings, saveSettings, type Settings } from "./settings";
+import { enabledStore, loadSettings, saveSettings, type Settings } from "./settings";
+import { listenMusic } from "./modules/music/store";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const HOVER_OPEN_MS = 120;
@@ -30,7 +31,12 @@ export default function App() {
     loadSettings()
       .then(setSettings)
       .catch(() => {});
-    return listenOverlay();
+    const offOverlay = listenOverlay();
+    const offMusic = listenMusic();
+    return () => {
+      offOverlay();
+      offMusic();
+    };
   }, []);
 
   /** Samakan keadaan island dengan keinginan terakhir (`want`). Aman dipanggil berulang. */
@@ -80,6 +86,8 @@ export default function App() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [sync]);
+
+  useEffect(() => enabledStore.set(settings.modules), [settings]);
 
   const enabled = MODULES.filter((m) => settings.modules[m.id] ?? false);
   const tabs = enabled.filter((m) => m.tab);

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { createStore } from "./store";
 
 export interface Settings {
   /** id modul -> aktif atau tidak. Rust selalu mengisi semua id. */
@@ -19,3 +20,6 @@ export async function readJson<T>(key: string, fallback: T): Promise<T> {
 }
 export const writeJson = (key: string, value: unknown) =>
   invoke<void>("write_data", { key, value: JSON.stringify(value) });
+
+/** Salinan status aktif/mati tiap modul, agar modul bisa tahu modul lain aktif (mis. Lirik). */
+export const enabledStore = createStore<Record<string, boolean>>({});

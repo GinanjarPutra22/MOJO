@@ -86,6 +86,23 @@ fn pomodoro_skip(p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
     p.skip()
 }
 
+/// Kontrol musik: "toggle", "next", atau "prev". Tidak berefek di luar Windows.
+#[tauri::command]
+fn music_control(action: String) {
+    #[cfg(windows)]
+    {
+        use win::media::{send, Cmd};
+        match action.as_str() {
+            "toggle" => send(Cmd::Toggle),
+            "next" => send(Cmd::Next),
+            "prev" => send(Cmd::Prev),
+            _ => {}
+        }
+    }
+    #[cfg(not(windows))]
+    let _ = action;
+}
+
 /// Keluar dari MOJO (tombol di Pengaturan; menu tray juga memanggil app.exit).
 #[tauri::command]
 fn quit_app(app: AppHandle) {
@@ -110,6 +127,7 @@ pub fn run() {
             get_settings,
             save_settings,
             quit_app,
+            music_control,
             read_data,
             write_data,
             pomodoro_get,

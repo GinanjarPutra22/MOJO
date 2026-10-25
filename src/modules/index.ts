@@ -1,3 +1,5 @@
+import Music, { MiniLeft } from "./music/Music";
+import MiniRight from "./music/MiniRight";
 import Pomodoro from "./Pomodoro";
 import Todo from "./Todo";
 import type { MojoModule } from "./types";
@@ -9,6 +11,18 @@ import type { MojoModule } from "./types";
  */
 export const MODULES: MojoModule[] = [
   { id: "clock", name: "Tanggal & jam", description: "Tanggal dan jam di bagian atas island." },
+  {
+    id: "music",
+    name: "Musik",
+    description: "Lagu yang sedang diputar (Spotify, browser, dll.) dan kontrolnya.",
+    tab: { label: "Music", Component: Music },
+    mini: { Left: MiniLeft, Right: MiniRight },
+  },
+  {
+    id: "lyrics",
+    name: "Lirik",
+    description: "Lirik bersinkron dari lrclib.net. Judul dan artis lagu dikirim ke layanan itu.",
+  },
   {
     id: "pomodoro",
     name: "Pomodoro",

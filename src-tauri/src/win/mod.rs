@@ -2,3 +2,4 @@
 
 pub mod audio;
 pub mod caps;
+pub mod media;

@@ -29,6 +29,7 @@ impl Drop for Service {
 pub struct Running {
     caps: Option<Service>,
     volume: Option<Service>,
+    music: Option<Service>,
 }
 
 #[derive(Default)]
@@ -55,6 +56,7 @@ pub fn apply(app: &AppHandle, settings: &Settings) {
     {
         use crate::win;
         toggle(&mut run.caps, settings.enabled("capslock"), || win::caps::start(app.clone()));
+        toggle(&mut run.music, settings.enabled("music"), || win::media::start(app.clone()));
         toggle(&mut run.volume, settings.enabled("volume"), || win::audio::start(app.clone()));
     }
     #[cfg(not(windows))]
