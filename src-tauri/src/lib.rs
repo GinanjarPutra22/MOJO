@@ -8,7 +8,7 @@ mod win;
 use std::sync::Arc;
 
 use store::Settings;
-use timer::{Pomodoro, PomodoroState};
+use timer::{Mode, Pomodoro, PomodoroState};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
@@ -49,13 +49,10 @@ fn get_settings(app: AppHandle) -> Settings {
 
 #[tauri::command]
 fn save_settings(app: AppHandle, settings: Settings) -> Result<(), String> {
-    let merged = Settings {
-        modules: {
-            let mut m = store::load_settings(&app).modules;
-            m.extend(settings.modules);
-            m
-        },
-    };
+    // Gabungkan dengan yang tersimpan: kunci yang tidak dikirim tetap dipertahankan.
+    let mut merged = store::load_settings(&app);
+    merged.modules.extend(settings.modules);
+    merged.prefs.extend(settings.prefs);
     store::store_settings(&app, &merged)?;
     services::apply(&app, &merged);
     Ok(())
@@ -79,6 +76,11 @@ fn pomodoro_pause(p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
 #[tauri::command]
 fn pomodoro_reset(p: tauri::State<Arc<Pomodoro>>) -> PomodoroState {
     p.reset()
+}
+
+#[tauri::command]
+fn pomodoro_mode(p: tauri::State<Arc<Pomodoro>>, mode: Mode) -> PomodoroState {
+    p.set_mode(mode)
 }
 
 #[tauri::command]
@@ -134,7 +136,8 @@ pub fn run() {
             pomodoro_start,
             pomodoro_pause,
             pomodoro_reset,
-            pomodoro_skip
+            pomodoro_skip,
+            pomodoro_mode,
         ])
         .setup(|app| {
             app.manage(Pomodoro::new());

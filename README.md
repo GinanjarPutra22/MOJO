@@ -2,26 +2,26 @@
 
 Aplikasi produktivitas ringan bergaya Dynamic Island untuk Windows 11, dibuat dengan Tauri 2, Rust, React, dan TypeScript. Kode orisinal.
 
-**Status: milestone M0 sampai M6.**
+**Status: milestone M0 sampai M6, dengan tampilan baru mengikuti "Mojo - Prototipe Visual".**
 
 | Milestone | Isi |
 |---|---|
 | M0 | Jendela island: tanpa bingkai, transparan, selalu di atas, tidak di taskbar, menempel di tengah atas layar |
-| M1 | Hover untuk membuka/menutup dengan animasi halus |
-| M2 | Pengaturan dan sistem modul (saklar on/off, tersimpan), tray dengan menu Keluar |
-| M3 | To-do dan Pomodoro (timer dihitung di Rust) |
+| M1 | Hover untuk membuka/menutup dengan animasi pegas (spring) |
+| M2 | Pengaturan (tab Fitur/Sistem/Tampilan) dan sistem modul (saklar on/off, tersimpan), tray dengan menu Keluar |
+| M3 | To-Do (prioritas, tenggat) dan Pomodoro (3 mode, timer dihitung di Rust) |
 | M4 | Overlay volume dan Caps Lock |
 | M5 | Musik dari Windows media session (sampul, judul, artis, kontrol) dan lirik |
 | M6 | Pop-up baterai/charger, Wi-Fi, dan pergantian perangkat audio (headphone) |
 
-Belum dikerjakan: pengingat minum dan file shelf (M7), deteksi full-screen dan multi-monitor (M8), installer (M9), overlay brightness.
+Belum dikerjakan: Water/pengingat minum, tab Notif dan Status dari prototipe, file shelf (M7), deteksi full-screen dan multi-monitor (M8), installer (M9), overlay brightness.
 
 ## Cara keluar dari MOJO
 
 MOJO tidak punya bingkai dan tidak ada di taskbar, jadi ada tiga cara menutupnya:
 
 1. **Ikon tray** (pojok kanan bawah, dekat jam; mungkin di balik panah `^`): klik kanan, pilih **Keluar dari MOJO**.
-2. **Pengaturan**: arahkan mouse ke island, klik ikon ⚙, lalu tombol merah **Keluar dari MOJO** di bagian bawah daftar.
+2. **Pengaturan**: arahkan mouse ke island, klik ikon heksagon di kanan atas, lalu tombol **Keluar** di kanan atas panel.
 3. Saat memakai `npm run tauri dev`: tekan `Ctrl+C` di terminal.
 
 ## Yang dibutuhkan
@@ -52,26 +52,30 @@ Kompilasi pertama memakan beberapa menit (ada banyak paket Rust). Itu normal; be
 
 Setelah `npm run tauri dev` selesai, cek satu per satu dan catat nomor yang gagal.
 
-### M0 dan M1: jendela dan animasi
+### M0 dan M1: jendela, hover, dan animasi pegas
 
-1. Pil hitam kecil muncul menempel di tengah atas layar utama (sudut bawahnya membulat), berisi jam (misalnya `15:08`).
-2. Di sekeliling pil tidak ada kotak putih/abu-abu dan tidak ada tombol di taskbar.
-3. Buka aplikasi lain (Notepad), geser ke area atas: pil tetap terlihat di atasnya.
-4. Arahkan mouse ke pil: ia melebar dan memanjang ke bawah dengan halus, tampil seperti desain (tab di kiri atas, tanggal dan jam di tengah, ⚙ di kanan).
-5. Jauhkan mouse: setelah sekitar setengah detik ia mengecil kembali (`Esc` juga menutup).
-6. Biarkan tertutup, lihat Task Manager: CPU MOJO harus 0% saat diam.
+1. Pil hitam kecil menempel di tengah atas layar utama (sudut bawah membulat, ada lengkung kecil di kiri-kanan atas seperti notch), berisi jam (`15:08`).
+2. Di sekeliling pil tidak ada kotak putih/abu-abu dan tidak ada tombol di taskbar. Buka Notepad dan geser ke area atas: pil tetap di atasnya.
+3. Arahkan mouse ke pil: ia melebar dan memanjang ke bawah dengan animasi pegas (sedikit memantul), lalu tampil header (tab, tanggal | jam, ikon heksagon).
+4. Jauhkan mouse: setelah sekitar 1/3 detik ia mengecil tenang. `Esc` juga menutup. Saat mengetik di kolom teks, island tidak menutup.
+5. Saat musik berjalan, pil melebar sedikit: ikon hijau di kiri, jam di tengah, gelombang di kanan. Saat Pomodoro berjalan, pil menampilkan hitung mundur dengan titik oranye (fokus) atau hijau (istirahat). Pesan singkat (volume, baterai, dll.) tampil di pil selama sekitar 2 detik.
+6. Biarkan tertutup tanpa musik/timer, lihat Task Manager: CPU MOJO harus 0%.
 
-### M2: pengaturan
+### Tab geser dan Pengaturan
 
-7. Buka island, klik ⚙: muncul daftar modul dengan saklar. Matikan "Tanggal & jam": jam hilang dari tampilan.
-8. Keluar dari MOJO (lihat atas), jalankan lagi: saklar tetap seperti terakhir. File ada di `%APPDATA%\com.mojo.app\settings.json`.
+7. Di island terbuka ada tab **Music**, **Pomodoro**, **To-Do** (tiga tab terlihat sekaligus). Pindah tab dengan: klik nama tab, tombol panah kiri/kanan, scroll horizontal (trackpad, atau `Shift` + roda mouse), atau tarik ke kiri/kanan dengan mouse di area kosong.
+8. Klik ikon heksagon: panel Pengaturan dengan tiga bagian.
+   - **Fitur**: saklar Music, Pomodoro, To-Do (minimal satu harus aktif). Matikan satu: tab-nya hilang.
+   - **Sistem**: saklar Lirik, overlay volume, Caps Lock, baterai, Wi-Fi, perangkat audio.
+   - **Tampilan**: gaya *Notch* atau *Dynamic Island* (pil melayang), ukuran font 85–120%, radius sudut 12–44 px.
+   - **Tetap terbuka** menahan island terbuka (tidak menutup saat mouse keluar).
+9. Keluar dari MOJO dan jalankan lagi: semua pilihan tetap. File ada di `%APPDATA%\com.mojo.app\settings.json`.
 
-### M3: Pomodoro dan To-do
+### M3: Pomodoro dan To-Do
 
-9. Tab **Pomodoro**: tekan ▶, hitungan 25:00 berjalan. Tutup island (jauhkan mouse), tunggu 1 menit, buka lagi: waktu tetap akurat. (Untuk uji cepat, tekan **Lewati** lalu mulai Istirahat 5 menit.)
-10. Saat waktu habis island menampilkan pesan singkat di bagian atas lalu pindah ke fase berikutnya.
-11. Tab **To-do**: ketik tugas, `Enter`, centang, hapus. Keluar lalu jalankan lagi: daftar tetap ada.
-12. Matikan modul Pomodoro di Pengaturan: timer direset dan berhenti.
+10. Tab **Pomodoro**: cincin 25:00, pilihan Fokus / Istirahat / Istirahat panjang, tombol Mulai/Jeda, Ulang, Lewati, dan empat titik sesi. Tekan Mulai, tutup island, tunggu 1 menit, buka lagi: waktu tetap akurat. Setelah 4 sesi fokus, istirahat berikutnya otomatis panjang (15 menit). Hitungan sesi hilang saat MOJO ditutup.
+11. Saat waktu habis, pil menampilkan "Fokus selesai"/"Istirahat selesai", lalu pindah ke mode berikutnya dan menunggu kamu menekan Mulai.
+12. Tab **To-Do**: `+ Tambah tugas`, isi teks, ganti prioritas (merah/kuning/biru) dan tenggat, Simpan. Centang, ubah (ikon pena), hapus (ikon silang), dan bilah progres bertambah. Keluar lalu jalankan lagi: daftar tetap ada. Matikan Pomodoro di Pengaturan: timer direset dan berhenti.
 
 ### M4: overlay sistem
 
@@ -111,12 +115,14 @@ Target MOJO adalah ringan, tapi angkanya harus diukur. Aplikasi Tauri memakai We
 3. Task Manager (`Ctrl+Shift+Esc`), tab **Details**: jumlahkan Memory `mojo.exe` dan semua `msedgewebview2.exe` anaknya. Catat juga CPU.
 4. Ulangi dengan island terbuka dan musik berjalan.
 
-Perilaku idle yang disengaja: tidak ada animasi berulang; jam hanya berdetak sekali per menit; detik musik/Pomodoro hanya berdetak saat island terbuka; semua data Windows memakai event (callback), bukan polling; modul yang dimatikan melepas listener-nya.
+Perilaku idle yang disengaja: tidak ada animasi saat diam; jam hanya berdetak sekali per menit. **Pengecualian:** saat musik berjalan dan island tertutup, gelombang di pil beranimasi (memakai transform, tapi tetap memakai sedikit GPU/CPU); saat Pomodoro berjalan, pil berdetak 1 detik. Detik di tab Music hanya berdetak saat island terbuka; semua data Windows memakai event (callback), bukan polling; modul yang dimatikan melepas listener-nya.
 
 ## Struktur
 
 ```
-src/App.tsx               island: ciut/terbuka, hover, tab, Pengaturan
+src/App.tsx               island: hover+spring, tab geser, ukuran jendela
+src/Mini.tsx              isi pil saat ciut
+src/Settings.tsx          panel Pengaturan (Fitur/Sistem/Tampilan)
 src/modules/              satu modul per fitur; daftar di index.ts
 src/modules/music/        musik, lirik (LRCLIB), state dari event Rust
 src/overlay.ts            pesan singkat dari Rust (volume, baterai, dll.)

@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 
 export interface TabProps {
-  /** true saat island terbuka dan tab ini sedang dipilih. Jangan jalankan timer saat false. */
+  /** true saat island terbuka dan tab ini sedang terlihat. Jangan jalankan timer saat false. */
   active: boolean;
 }
 
@@ -10,8 +10,8 @@ export interface MojoModule {
   id: string;
   name: string;
   description: string;
+  /** "feature": tampil sebagai tab. "system": layanan latar (overlay/pop-up), tanpa tab. */
+  group: "feature" | "system";
   /** Kalau ada, modul tampil sebagai tab di island yang terbuka. */
   tab?: { label: string; Component: ComponentType<TabProps> };
-  /** Isi tambahan di island yang ciut: kiri dan kanan jam. */
-  mini?: { Left?: ComponentType; Right?: ComponentType };
 }

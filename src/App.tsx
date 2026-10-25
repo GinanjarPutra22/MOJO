@@ -1,186 +1,305 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { formatDate, formatTime, useMinuteClock } from "./clock";
-import { Back, Gear } from "./icons";
-import OverlayView from "./OverlayView";
-import { ANIM_MS, COLLAPSED, EXPANDED, resizeIsland } from "./island";
+import { Hex } from "./icons";
+import { resizeIsland, dims } from "./island";
+import Mini, { useMiniMeta } from "./Mini";
 import { MODULES } from "./modules";
+import { listenMusic, lyricsViewStore } from "./modules/music/store";
+import { listenPomo, refreshPomo } from "./modules/pomo-store";
 import { listenOverlay, overlayStore } from "./overlay";
-import { invoke } from "@tauri-apps/api/core";
-import { enabledStore, loadSettings, saveSettings, type Settings } from "./settings";
-import { listenMusic } from "./modules/music/store";
+import OverlayView from "./OverlayView";
+import Settings from "./Settings";
+import { enabledStore, loadSettings, num, prefsStore, saveSettings } from "./settings";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const HOVER_OPEN_MS = 120;
-const HOVER_CLOSE_MS = 500;
+const OPEN_MS = 650; // transisi buka (pegas)
+const CLOSE_MS = 560; // transisi tutup
+const CW_MS = 520; // perubahan lebar pil saat ciut
+const HOVER_CLOSE_MS = 350;
 
 export default function App() {
-  const [open, setOpen] = useState(false);
-  const [view, setView] = useState<"home" | "settings">("home");
-  const [tabId, setTabId] = useState<string | null>(null);
-  const [settings, setSettings] = useState<Settings>({ modules: {} });
-  const now = useMinuteClock();
+  const enabled = enabledStore.use();
+  const prefs = prefsStore.use();
   const overlay = overlayStore.use();
+  const lyricsView = lyricsViewStore.use();
+  const now = useMinuteClock();
 
-  const want = useRef(false);
-  const isOpen = useRef(false);
-  const busy = useRef(false);
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const fs = num(prefs, "ui.font", 100) / 100;
+  const radius = num(prefs, "ui.radius", 34);
+  const di = prefs["ui.style"] === "d";
+  const pinned = prefs["ui.pinned"] === true;
 
-  useEffect(() => {
-    loadSettings()
-      .then(setSettings)
-      .catch(() => {});
-    const offOverlay = listenOverlay();
-    const offMusic = listenMusic();
-    return () => {
-      offOverlay();
-      offMusic();
-    };
-  }, []);
+  const meta = useMiniMeta(enabled);
 
-  /** Samakan keadaan island dengan keinginan terakhir (`want`). Aman dipanggil berulang. */
-  const sync = useCallback(async () => {
-    if (busy.current) return;
-    busy.current = true;
+  const [open, setOpen] = useState(false);
+  const [cw, setCw] = useState(112);
+  const [setsOpen, setSetsOpen] = useState(false);
+  const [cur, setCur] = useState("music");
+
+  // ---- jendela: ukuran jendela harus mendahului animasi buka dan menyusul animasi tutup ----
+  const R = useRef({ want: false, open: false, cw: 112, wantCw: 112, fs: 1, di: false, busy: false });
+  R.current.wantCw = meta.cw;
+  R.current.fs = fs;
+  R.current.di = di;
+
+  const reconcile = useCallback(async () => {
+    const r = R.current;
+    if (r.busy) return;
+    r.busy = true;
     try {
-      while (want.current !== isOpen.current) {
-        if (want.current) {
-          // Perbesar jendela dulu, baru animasikan island di dalamnya.
-          await resizeIsland(EXPANDED);
-          isOpen.current = true;
-          setOpen(true);
-          await wait(ANIM_MS);
-        } else {
-          // Animasikan island dulu, baru kecilkan jendela.
-          isOpen.current = false;
-          setOpen(false);
-          await wait(ANIM_MS + 30);
-          await resizeIsland(COLLAPSED);
-          setView("home");
+      for (;;) {
+        if (r.want !== r.open) {
+          if (r.want) {
+            await resizeIsland(dims(true, r.cw, r.fs, r.di));
+            r.open = true;
+            setOpen(true);
+            await wait(OPEN_MS);
+          } else {
+            r.open = false;
+            setOpen(false);
+            setSetsOpen(false);
+            await wait(CLOSE_MS);
+            await resizeIsland(dims(false, r.cw, r.fs, r.di));
+          }
+          continue;
         }
+        if (!r.open && r.wantCw !== r.cw) {
+          const next = r.wantCw;
+          if (next > r.cw) {
+            await resizeIsland(dims(false, next, r.fs, r.di));
+            r.cw = next;
+            setCw(next);
+            await wait(CW_MS);
+          } else {
+            r.cw = next;
+            setCw(next);
+            await wait(CW_MS);
+            await resizeIsland(dims(false, next, r.fs, r.di));
+          }
+          continue;
+        }
+        break;
       }
     } finally {
-      busy.current = false;
+      r.busy = false;
     }
   }, []);
 
-  const hover = (inside: boolean) => {
+  useEffect(() => {
+    reconcile();
+  }, [meta.cw, reconcile]);
+
+  // Ukuran font atau gaya berubah: sesuaikan jendela dengan keadaan sekarang.
+  useEffect(() => {
+    const r = R.current;
+    resizeIsland(dims(r.open, r.cw, fs, di)).catch(() => {});
+  }, [fs, di]);
+
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const openIsland = useCallback(() => {
     clearTimeout(timer.current);
-    timer.current = setTimeout(
-      () => {
-        want.current = inside;
-        sync();
-      },
-      inside ? HOVER_OPEN_MS : HOVER_CLOSE_MS,
-    );
+    R.current.want = true;
+    reconcile();
+  }, [reconcile]);
+  const shut = useCallback(() => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (prefsStore.get()["ui.pinned"] === true) return;
+      const a = document.activeElement as HTMLElement | null;
+      if (a?.matches("input,select")) return; // sedang mengetik
+      a?.blur();
+      R.current.want = false;
+      reconcile();
+    }, HOVER_CLOSE_MS);
+  }, [reconcile]);
+
+  // Tetap terbuka: buka saat dinyalakan, kembali ke perilaku hover saat dimatikan.
+  useEffect(() => {
+    if (pinned) openIsland();
+    else shut();
+  }, [pinned, openIsland, shut]);
+
+  // ---- muat pengaturan dan pasang listener event dari Rust ----
+  useEffect(() => {
+    loadSettings()
+      .then((s) => {
+        enabledStore.set(s.modules);
+        prefsStore.set(s.prefs ?? {});
+      })
+      .catch(() => {});
+    const offs = [listenOverlay(), listenMusic(), listenPomo()];
+    return () => offs.forEach((f) => f());
+  }, []);
+
+  const toggleModule = (id: string, value: boolean) => {
+    enabledStore.set((m) => ({ ...m, [id]: value }));
+    saveSettings({ modules: { [id]: value } })
+      .then(() => {
+        if (id === "pomodoro") refreshPomo().catch(() => {});
+      })
+      .catch(() => {});
   };
+
+  // ---- tab ----
+  const tabs = useMemo(() => MODULES.filter((m) => m.tab && enabled[m.id]), [enabled]);
+  const curIdx = Math.max(0, tabs.findIndex((m) => m.id === cur));
+  const current = tabs[curIdx];
+
+  // pane yang sedang disiapkan di sisi luar sebelum meluncur masuk (tanpa transisi)
+  const [prep, setPrep] = useState<{ id: string; side: "bef" | "aft" } | null>(null);
+  const sides = useRef<Record<string, "bef" | "aft">>({});
+
+  const go = useCallback(
+    (id: string, dir: number) => {
+      setSetsOpen(false);
+      if (!current || id === current.id) return;
+      setPrep({ id, side: dir > 0 ? "aft" : "bef" });
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          sides.current[current.id] = dir > 0 ? "bef" : "aft";
+          setPrep(null);
+          setCur(id);
+        }),
+      );
+    },
+    [current],
+  );
+
+  const step = useCallback(
+    (dir: number) => {
+      if (setsOpen || !R.current.open || tabs.length < 2) return;
+      go(tabs[(curIdx + dir + tabs.length) % tabs.length].id, dir);
+    },
+    [setsOpen, tabs, curIdx, go],
+  );
+
+  // Fitur yang sedang dipilih dimatikan: pindah ke yang pertama.
+  useEffect(() => {
+    if (tabs.length && !tabs.some((m) => m.id === cur)) setCur(tabs[0].id);
+  }, [tabs, cur]);
+
+  // tiga tab terlihat: sebelumnya, sekarang, berikutnya
+  const visible = tabs.length < 3 ? tabs.map((_, k) => k) : [(curIdx + tabs.length - 1) % tabs.length, curIdx, (curIdx + 1) % tabs.length];
+
+  // geser: roda horizontal, tarik dengan mouse, dan panah keyboard
+  const fullRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = fullRef.current;
+    if (!el) return;
+    let acc = 0;
+    let lock = 0;
+    let reset: ReturnType<typeof setTimeout>;
+    const onWheel = (e: WheelEvent) => {
+      if (setsOpen) return;
+      const dx = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.shiftKey ? e.deltaY : 0;
+      if (!dx) return;
+      e.preventDefault();
+      const t = Date.now();
+      if (t < lock) return;
+      acc += dx;
+      clearTimeout(reset);
+      reset = setTimeout(() => (acc = 0), 150);
+      if (Math.abs(acc) > 50) {
+        step(acc > 0 ? 1 : -1);
+        acc = 0;
+        lock = t + 450;
+      }
+    };
+    let sx: number | null = null;
+    const onDown = (e: PointerEvent) => {
+      sx = (e.target as HTMLElement).closest("button,input,select,.tl,.set") ? null : e.clientX;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (sx === null) return;
+      const dx = e.clientX - sx;
+      sx = null;
+      if (Math.abs(dx) > 60) step(dx < 0 ? 1 : -1);
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    el.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointerup", onUp);
+      clearTimeout(reset);
+    };
+  }, [step, setsOpen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement).matches?.("input,select")) return;
+      if (e.key === "ArrowRight") step(1);
+      if (e.key === "ArrowLeft") step(-1);
       if (e.key === "Escape") {
-        want.current = false;
-        sync();
+        if (setsOpen) setSetsOpen(false);
+        else if (!pinned) {
+          R.current.want = false;
+          reconcile();
+        }
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [sync]);
+  }, [step, setsOpen, pinned, reconcile]);
 
-  useEffect(() => enabledStore.set(settings.modules), [settings]);
-
-  const enabled = MODULES.filter((m) => settings.modules[m.id] ?? false);
-  const tabs = enabled.filter((m) => m.tab);
-  const current = tabs.find((m) => m.id === tabId) ?? tabs[0];
-
-  const toggleModule = (id: string, value: boolean) => {
-    const next = { modules: { ...settings.modules, [id]: value } };
-    setSettings(next);
-    saveSettings(next).catch(() => {});
+  const paneClass = (id: string) => {
+    if (prep?.id === id) return `view ${prep.side} noanim`;
+    if (current?.id === id) return "view on";
+    return `view ${sides.current[id] ?? "aft"}`;
   };
 
-  const clockOn = settings.modules["clock"] ?? false;
-  const centerText = clockOn ? `${formatDate(now)} | ${formatTime(now)}` : "MOJO";
+  const cls = ["island", open ? "open" : "", di ? "di" : "", meta.playing ? "playing" : "", lyricsView && current?.id === "music" ? "lyr" : ""];
 
   return (
-    <div
-      className={`island${open ? " open" : ""}`}
-      onMouseEnter={() => hover(true)}
-      onMouseLeave={() => hover(false)}
-    >
-      {/* Tampilan ciut */}
-      <div className="mini" aria-hidden={open}>
-        <div className="mini-side left">
-          {enabled.map((m) => m.mini?.Left && <m.mini.Left key={m.id} />)}
+    <div className="wrap">
+      <div
+        className={cls.filter(Boolean).join(" ")}
+        style={{ ["--cw" as string]: `${cw}px`, ["--fs" as string]: fs, ["--r" as string]: `${radius}px` }}
+        role="region"
+        aria-label="MOJO"
+        onPointerEnter={(e) => e.pointerType !== "touch" && openIsland()}
+        onPointerLeave={(e) => e.pointerType !== "touch" && shut()}
+        onClick={() => !open && openIsland()}
+      >
+        <div className="clip">
+          <Mini meta={meta} />
+
+          <div className="full" ref={fullRef} aria-hidden={!open}>
+            <div className="head">
+              <nav className="tabs" role="tablist" aria-label="Fitur">
+                {visible.map((k, p) => (
+                  <button
+                    key={tabs[k].id}
+                    type="button"
+                    role="tab"
+                    aria-selected={k === curIdx}
+                    onClick={() => k !== curIdx && go(tabs[k].id, tabs.length < 3 ? (k > curIdx ? 1 : -1) : p === 0 ? -1 : 1)}
+                  >
+                    {tabs[k].tab!.label}
+                  </button>
+                ))}
+              </nav>
+              <div className="date">{overlay ? <OverlayView overlay={overlay} /> : `${formatDate(now)} | ${formatTime(now)}`}</div>
+              <button type="button" className="ic settings" aria-label="Pengaturan" aria-pressed={setsOpen} onClick={() => open && setSetsOpen(!setsOpen)}>
+                <Hex size={20} />
+              </button>
+            </div>
+
+            {tabs.length === 0 && <p className="muted">Belum ada fitur aktif. Buka Pengaturan.</p>}
+            {tabs.map((m) => {
+              const Tab = m.tab!.Component;
+              return (
+                <section key={m.id} className={paneClass(m.id)} style={{ ["--c" as string]: undefined }}>
+                  <Tab active={open && !setsOpen && current?.id === m.id} />
+                </section>
+              );
+            })}
+
+            <Settings open={setsOpen} enabled={enabled} prefs={prefs} onToggle={toggleModule} />
+          </div>
         </div>
-        <div className="mini-center">{overlay ? <OverlayView overlay={overlay} /> : clockOn ? formatTime(now) : "MOJO"}</div>
-        <div className="mini-side right">
-          {enabled.map((m) => m.mini?.Right && <m.mini.Right key={m.id} />)}
-        </div>
-      </div>
-
-      {/* Tampilan terbuka */}
-      <div className="content" aria-hidden={!open}>
-        <header className="bar">
-          <nav className="tabs">
-            {view === "home" &&
-              tabs.map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  className={`tab${m === current ? " on" : ""}`}
-                  onClick={() => setTabId(m.id)}
-                >
-                  {m.tab!.label}
-                </button>
-              ))}
-            {view === "settings" && <span className="tab on">Pengaturan</span>}
-          </nav>
-          <div className="bar-center">{overlay ? <OverlayView overlay={overlay} /> : centerText}</div>
-          <button
-            type="button"
-            className="icon"
-            aria-label={view === "home" ? "Pengaturan" : "Kembali"}
-            onClick={() => setView(view === "home" ? "settings" : "home")}
-          >
-            {view === "home" ? <Gear /> : <Back />}
-          </button>
-        </header>
-
-        {/* Tab tetap terpasang (state tidak hilang), hanya disembunyikan. */}
-        <main className="body" hidden={view !== "home"}>
-          {tabs.length === 0 && <p className="muted">Belum ada modul aktif. Nyalakan di Pengaturan.</p>}
-          {tabs.map((m) => {
-            const Tab = m.tab!.Component;
-            return (
-              <section key={m.id} hidden={m !== current} className="tab-pane">
-                <Tab active={open && view === "home" && m === current} />
-              </section>
-            );
-          })}
-        </main>
-
-        {view === "settings" && (
-          <main className="body settings">
-            {MODULES.map((m) => (
-              <label key={m.id} className="row">
-                <span>
-                  <strong>{m.name}</strong>
-                  <small>{m.description}</small>
-                </span>
-                <input
-                  type="checkbox"
-                  role="switch"
-                  checked={settings.modules[m.id] ?? false}
-                  onChange={(e) => toggleModule(m.id, e.target.checked)}
-                />
-              </label>
-            ))}
-            <button type="button" className="quit" onClick={() => invoke("quit_app")}>
-              Keluar dari MOJO
-            </button>
-          </main>
-        )}
       </div>
     </div>
   );

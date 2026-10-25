@@ -44,3 +44,6 @@ export function positionNow(m: Music): number {
   const pos = m.playing ? m.position_ms + (Date.now() - m.at_ms) : m.position_ms;
   return m.duration_ms > 0 ? Math.min(pos, m.duration_ms) : pos;
 }
+
+/** true saat tampilan lirik di tab Music terbuka (App memakainya untuk menyembunyikan tanggal). */
+export const lyricsViewStore = createStore<boolean>(false);

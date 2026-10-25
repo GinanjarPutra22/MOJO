@@ -50,11 +50,12 @@ fn toggle(slot: &mut Option<Service>, want: bool, start: impl FnOnce() -> Option
 
 pub fn apply(app: &AppHandle, settings: &Settings) {
     if !settings.enabled("pomodoro") {
-        app.state::<Arc<Pomodoro>>().reset();
+        app.state::<Arc<Pomodoro>>().reset_all();
     }
 
     let services = app.state::<Services>();
     let mut run = services.0.lock().unwrap();
+
     #[cfg(windows)]
     {
         use crate::win;

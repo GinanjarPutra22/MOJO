@@ -1,33 +1,19 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import { useEffect, useState } from "react";
-import { Pause, Play } from "../icons";
+import { pomoCmd, pomoLeft, pomoStore, type PomoMode } from "./pomo-store";
 import type { TabProps } from "./types";
 
-interface State {
-  phase: "focus" | "break";
-  running: boolean;
-  remaining_ms: number;
-  ends_at_ms: number;
-}
+const LABEL: Record<PomoMode, string> = { focus: "Waktu fokus", short: "Istirahat singkat", long: "Istirahat panjang" };
+const MODES: [PomoMode, string][] = [["focus", "Fokus"], ["short", "Istirahat"], ["long", "Istirahat panjang"]];
+const CIRC = 326.7; // keliling lingkaran r=52
 
-const mmss = (ms: number) => {
+export const mmss = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
 export default function Pomodoro({ active }: TabProps) {
-  const [st, setSt] = useState<State | null>(null);
+  const st = pomoStore.use();
   const [, redraw] = useState(0);
-
-  // Waktu dihitung di Rust. Di sini hanya menerima keadaan terbaru.
-  useEffect(() => {
-    invoke<State>("pomodoro_get").then(setSt);
-    const un = listen<State>("pomodoro", (e) => setSt(e.payload));
-    return () => {
-      un.then((f) => f());
-    };
-  }, []);
 
   // Detak 1 detik hanya untuk menggambar ulang, dan hanya saat terlihat dan berjalan.
   const running = st?.running ?? false;
@@ -38,23 +24,46 @@ export default function Pomodoro({ active }: TabProps) {
   }, [active, running]);
 
   if (!st) return null;
-  const act = (cmd: string) => invoke<State>(cmd).then(setSt);
-  const ms = st.running ? st.ends_at_ms - Date.now() : st.remaining_ms;
+  const left = pomoLeft(st);
+  const color = st.mode === "focus" ? "#ff7a59" : "#30d158";
+  let filled = st.sessions % 4;
+  if (st.sessions > 0 && filled === 0 && st.mode !== "focus") filled = 4;
 
   return (
-    <div className="pomo">
-      <div className="pomo-phase">{st.phase === "focus" ? "Fokus" : "Istirahat"}</div>
-      <div className="pomo-time">{mmss(ms)}</div>
-      <div className="pomo-actions">
-        <button type="button" className="round" aria-label={st.running ? "Jeda" : "Mulai"} onClick={() => act(st.running ? "pomodoro_pause" : "pomodoro_start")}>
-          {st.running ? <Pause size={20} /> : <Play size={20} />}
-        </button>
-        <button type="button" className="pill" onClick={() => act("pomodoro_reset")}>
-          Ulang
-        </button>
-        <button type="button" className="pill" onClick={() => act("pomodoro_skip")}>
-          Lewati
-        </button>
+    <div className="pomo" style={{ ["--c" as string]: color }}>
+      <div className="ringw">
+        <svg viewBox="0 0 120 120">
+          <circle className="rt" cx="60" cy="60" r="52" />
+          <circle className="rp" cx="60" cy="60" r="52" style={{ strokeDashoffset: CIRC * (1 - left / st.total_ms) }} />
+        </svg>
+        <div className="rc">
+          <div className="big">{mmss(left)}</div>
+          <div className="sm">{LABEL[st.mode]}</div>
+        </div>
+      </div>
+      <div className="pside">
+        <div className="seg" role="group" aria-label="Mode timer">
+          {MODES.map(([m, label]) => (
+            <button key={m} type="button" className={st.mode === m ? "on" : ""} onClick={() => pomoCmd("pomodoro_mode", { mode: m })}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="row">
+          <button type="button" className="pill pri" onClick={() => pomoCmd(st.running ? "pomodoro_pause" : "pomodoro_start")}>
+            {st.running ? "Jeda" : left < st.total_ms ? "Lanjut" : "Mulai"}
+          </button>
+          <button type="button" className="pill" onClick={() => pomoCmd("pomodoro_reset")}>Ulang</button>
+          <button type="button" className="pill" onClick={() => pomoCmd("pomodoro_skip")}>Lewati</button>
+        </div>
+        <div>
+          <div className="dots" role="img" aria-label="Sesi fokus">
+            {[1, 2, 3, 4].map((k) => (
+              <i key={k} className={filled >= k ? "f" : ""} />
+            ))}
+          </div>
+          <div className="sm" style={{ marginTop: 6 }}>{st.sessions} sesi fokus selesai</div>
+        </div>
       </div>
     </div>
   );

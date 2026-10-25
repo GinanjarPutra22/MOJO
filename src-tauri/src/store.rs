@@ -10,11 +10,10 @@ use tauri::{AppHandle, Manager};
 /// `src/modules/index.ts`. Modul yang memasang hook sistem (Caps Lock)
 /// sengaja mati secara bawaan.
 pub const MODULE_DEFAULTS: &[(&str, bool)] = &[
-    ("clock", true),
     ("music", true),
-    ("lyrics", true),
     ("pomodoro", true),
     ("todo", true),
+    ("lyrics", true),
     ("volume", true),
     ("capslock", false),
     ("battery", true),
@@ -23,10 +22,13 @@ pub const MODULE_DEFAULTS: &[(&str, bool)] = &[
 ];
 
 /// `modules` memetakan id modul ke true (aktif) atau false (mati).
+/// `prefs` berisi preferensi lain (tampilan, target minum, dll.) sebagai JSON bebas.
 #[derive(Serialize, Deserialize, Default, Clone)]
 pub struct Settings {
     #[serde(default)]
     pub modules: HashMap<String, bool>,
+    #[serde(default)]
+    pub prefs: HashMap<String, serde_json::Value>,
 }
 
 impl Settings {
@@ -46,8 +48,9 @@ impl Settings {
             .iter()
             .map(|(id, _)| (id.to_string(), self.enabled(id)))
             .collect();
-        Settings { modules }
+        Settings { modules, prefs: self.prefs.clone() }
     }
+
 }
 
 fn file_path(app: &AppHandle, name: &str) -> Result<PathBuf, String> {

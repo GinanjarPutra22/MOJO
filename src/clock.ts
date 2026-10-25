@@ -15,14 +15,16 @@ export function useMinuteClock(): Date {
         60_000 - (d.getSeconds() * 1000 + d.getMilliseconds()) + 50,
       );
     };
+    setNow(new Date());
     schedule();
     return () => clearTimeout(id);
   }, []);
   return now;
 }
 
-export const formatTime = (d: Date) =>
-  d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", hour12: false }).replace(".", ":");
+const pad = (n: number) => String(n).padStart(2, "0");
+const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 
-export const formatDate = (d: Date) =>
-  d.toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+export const formatTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+export const formatDate = (d: Date) => `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;

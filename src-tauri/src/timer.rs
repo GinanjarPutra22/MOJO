@@ -6,44 +6,41 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
 
 use crate::overlay::{self, Overlay};
 
-const FOCUS_MS: u64 = 25 * 60_000;
-const BREAK_MS: u64 = 5 * 60_000;
-
-#[derive(Clone, Copy, PartialEq, Serialize)]
+#[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum Phase {
+pub enum Mode {
     Focus,
-    Break,
+    Short,
+    Long,
 }
 
-impl Phase {
+impl Mode {
     fn duration(self) -> u64 {
         match self {
-            Phase::Focus => FOCUS_MS,
-            Phase::Break => BREAK_MS,
-        }
-    }
-    fn next(self) -> Phase {
-        match self {
-            Phase::Focus => Phase::Break,
-            Phase::Break => Phase::Focus,
+            Mode::Focus => 25 * 60_000,
+            Mode::Short => 5 * 60_000,
+            Mode::Long => 15 * 60_000,
         }
     }
 }
 
 #[derive(Clone, Serialize)]
 pub struct PomodoroState {
-    pub phase: Phase,
+    pub mode: Mode,
     pub running: bool,
     /// Sisa waktu saat berhenti/jeda.
     pub remaining_ms: u64,
     /// Waktu selesai (ms sejak 1970) saat berjalan.
     pub ends_at_ms: u64,
+    /// Total durasi mode ini, untuk menggambar cincin.
+    pub total_ms: u64,
+    /// Sesi fokus yang selesai sejak MOJO dibuka (atau sejak modul dinyalakan).
+    pub sessions: u32,
 }
 
 struct Inner {
@@ -64,20 +61,40 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+fn idle(mode: Mode, sessions: u32) -> PomodoroState {
+    PomodoroState {
+        mode,
+        running: false,
+        remaining_ms: mode.duration(),
+        ends_at_ms: 0,
+        total_ms: mode.duration(),
+        sessions,
+    }
+}
+
+/// Mode setelah fokus: istirahat panjang tiap sesi fokus ke-4.
+fn break_after(sessions: u32) -> Mode {
+    if sessions > 0 && sessions % 4 == 0 {
+        Mode::Long
+    } else {
+        Mode::Short
+    }
+}
+
 impl Pomodoro {
     pub fn new() -> Arc<Self> {
         Arc::new(Pomodoro {
-            inner: Mutex::new(Inner {
-                state: PomodoroState {
-                    phase: Phase::Focus,
-                    running: false,
-                    remaining_ms: FOCUS_MS,
-                    ends_at_ms: 0,
-                },
-                generation: 0,
-            }),
+            inner: Mutex::new(Inner { state: idle(Mode::Focus, 0), generation: 0 }),
             wake: Condvar::new(),
         })
+    }
+
+    /// Ganti keadaan dan hentikan thread yang sedang menunggu.
+    fn replace(&self, g: &mut Inner, state: PomodoroState) -> PomodoroState {
+        g.state = state;
+        g.generation += 1;
+        self.wake.notify_all();
+        g.state.clone()
     }
 
     pub fn get(&self) -> PomodoroState {
@@ -105,41 +122,42 @@ impl Pomodoro {
     pub fn pause(&self) -> PomodoroState {
         let mut g = self.inner.lock().unwrap();
         if g.state.running {
-            g.state.remaining_ms = g.state.ends_at_ms.saturating_sub(now_ms());
-            g.state.running = false;
-            g.generation += 1;
-            self.wake.notify_all();
+            let mut s = g.state.clone();
+            s.remaining_ms = s.ends_at_ms.saturating_sub(now_ms());
+            s.running = false;
+            return self.replace(&mut g, s);
         }
         g.state.clone()
     }
 
-    /// Kembali ke Fokus 25:00 dan berhenti. Dipakai juga saat modul dimatikan.
+    /// Ulang waktu mode yang sedang dipakai.
     pub fn reset(&self) -> PomodoroState {
         let mut g = self.inner.lock().unwrap();
-        g.state = PomodoroState {
-            phase: Phase::Focus,
-            running: false,
-            remaining_ms: FOCUS_MS,
-            ends_at_ms: 0,
-        };
-        g.generation += 1;
-        self.wake.notify_all();
-        g.state.clone()
+        let s = idle(g.state.mode, g.state.sessions);
+        self.replace(&mut g, s)
     }
 
-    /// Loncat ke fase berikutnya (Fokus <-> Istirahat), dalam keadaan berhenti.
+    /// Kembali ke awal sama sekali (dipakai saat modul dimatikan).
+    pub fn reset_all(&self) -> PomodoroState {
+        let mut g = self.inner.lock().unwrap();
+        self.replace(&mut g, idle(Mode::Focus, 0))
+    }
+
+    pub fn set_mode(&self, mode: Mode) -> PomodoroState {
+        let mut g = self.inner.lock().unwrap();
+        let s = idle(mode, g.state.sessions);
+        self.replace(&mut g, s)
+    }
+
+    /// Loncat ke mode berikutnya (tanpa menghitung sesi), dalam keadaan berhenti.
     pub fn skip(&self) -> PomodoroState {
         let mut g = self.inner.lock().unwrap();
-        let next = g.state.phase.next();
-        g.state = PomodoroState {
-            phase: next,
-            running: false,
-            remaining_ms: next.duration(),
-            ends_at_ms: 0,
+        let sessions = g.state.sessions;
+        let next = match g.state.mode {
+            Mode::Focus => break_after(sessions + 1),
+            _ => Mode::Focus,
         };
-        g.generation += 1;
-        self.wake.notify_all();
-        g.state.clone()
+        self.replace(&mut g, idle(next, sessions))
     }
 
     fn run(&self, my_gen: u64, app: AppHandle) {
@@ -156,25 +174,21 @@ impl Pomodoro {
             g = self.wake.wait_timeout(g, wait).unwrap().0;
         }
 
-        // Waktu habis: pindah fase dan berhenti, menunggu pengguna menekan Mulai.
-        let finished = g.state.phase;
-        let next = finished.next();
-        g.state = PomodoroState {
-            phase: next,
-            running: false,
-            remaining_ms: next.duration(),
-            ends_at_ms: 0,
+        // Waktu habis: pindah mode dan berhenti, menunggu pengguna menekan Mulai.
+        let finished = g.state.mode;
+        let mut sessions = g.state.sessions;
+        let next = if finished == Mode::Focus {
+            sessions += 1;
+            break_after(sessions)
+        } else {
+            Mode::Focus
         };
-        g.generation += 1;
-        let snapshot = g.state.clone();
+        let snapshot = self.replace(&mut g, idle(next, sessions));
         drop(g);
 
-        let text = match finished {
-            Phase::Focus => "Fokus selesai. Waktunya istirahat 5 menit",
-            Phase::Break => "Istirahat selesai. Siap fokus lagi?",
-        };
+        let text = if finished == Mode::Focus { "Fokus selesai" } else { "Istirahat selesai" };
         let mut o = Overlay::new("pomodoro", text);
-        o.ms = Some(6000);
+        o.ms = Some(5000);
         overlay::emit(&app, o);
         let _ = app.emit("pomodoro", snapshot);
     }
