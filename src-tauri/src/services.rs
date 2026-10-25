@@ -48,7 +48,15 @@ fn toggle(slot: &mut Option<Service>, want: bool, start: impl FnOnce() -> Option
     }
 }
 
+/// Terapkan pengaturan di thread terpisah. Memulai layanan Windows bisa memakan waktu
+/// (mis. menunggu media session), dan tidak boleh menahan thread utama yang menampilkan jendela.
 pub fn apply(app: &AppHandle, settings: &Settings) {
+    let app = app.clone();
+    let settings = settings.clone();
+    std::thread::spawn(move || apply_now(&app, &settings));
+}
+
+fn apply_now(app: &AppHandle, settings: &Settings) {
     if !settings.enabled("pomodoro") {
         app.state::<Arc<Pomodoro>>().reset_all();
     }
